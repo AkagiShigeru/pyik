@@ -106,7 +106,7 @@ def plot_hist(xedges, ws, axes=None, **kwargs):
     xy[0][0] = xedges[0]
     xy[0][-1] = xedges[-1]
 
-    for i in xrange(m):
+    for i in range(m):
         xy[0][1 + 2 * i] = xedges[i]
         xy[1][1 + 2 * i] = ws[i]
         xy[0][1 + 2 * i + 1] = xedges[i + 1]
@@ -169,7 +169,7 @@ def plot_boxerrors(xedges, ys, yes, axes=None, **kwargs):
     n = len(ys)
     isAsymmetric = len(yes.shape) == 2
     rs = []
-    for i in xrange(n):
+    for i in range(n):
         x0 = xedges[i]
         y0 = ys[i] - yes[i][0] if isAsymmetric else ys[i] - yes[i]
         xw = xedges[i + 1] - xedges[i]
@@ -339,7 +339,7 @@ def uncertainty_ellipse(par, cov, cfactor=1.51, axes=None, **kwargs):
     return ellipse
 
 
-def ViolinPlot(x, y, bins=10, range=None, offsetX=0, offsetY=0,
+def ViolinPlot(x, y, bins=10, xRange=None, offsetX=0, offsetY=0,
                color="k", marker="o", draw="amv", xmean=False,
                extend=3, outliers=True, textpos=None, axes=None, **kwargs):
     """
@@ -357,7 +357,7 @@ def ViolinPlot(x, y, bins=10, range=None, offsetX=0, offsetY=0,
     bins: int or array of type float or None
       Number of x bins or array of bin edges
       If None: Take x as bin centers and y as already binned values
-    range (optional):
+    xRange (optional):
       The range in x used for binning
 
     color: Matplotlib-compatible color value
@@ -401,7 +401,7 @@ def ViolinPlot(x, y, bins=10, range=None, offsetX=0, offsetY=0,
     sx = norm.cdf(-3 if extend is None else -extend)
 
     if bins is not None:
-        ybins, xedgs = bin(x, np.column_stack((x, y)), bins=bins, range=range)
+        ybins, xedgs = bin(x, np.column_stack((x, y)), bins=bins, xRange=xRange)
         xcens, xhws = centers(xedgs)
     else:
         xcens = x
@@ -453,7 +453,8 @@ def ViolinPlot(x, y, bins=10, range=None, offsetX=0, offsetY=0,
             try:
                 k = gaussian_kde(ybinh)
             except:
-                print "Warning! Error in estimating kernel density for data in bin %s! Skipping bin..." % i
+                print(
+                    "Warning! Error in estimating kernel density for data in bin %s! Skipping bin..." % i)
                 continue
 
             # support of violins

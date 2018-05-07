@@ -84,7 +84,7 @@ def covariance(function, vmin, up, fast=False, bounds=None):
                 #     then grow exponentially until zero+ is crossed,
 
                 if IsNonsense(x(h)):
-                    raise StandardError("profile does not cross fmin + up")
+                    raise ValueError("profile does not cross fmin + up")
 
                 t = self(x(h))
 
@@ -95,7 +95,7 @@ def covariance(function, vmin, up, fast=False, bounds=None):
                     b = h
                     while True:
                         if 2 * (b - a) < eps * (b + a):
-                            raise StandardError(
+                            raise ValueError(
                                 "profile does not cross fmin + up")
                         h = (a + b) / 2.0
                         t = self(x(h))
@@ -142,7 +142,7 @@ def covariance(function, vmin, up, fast=False, bounds=None):
 
         func = Func(function, vmin, up)
         d = np.empty((n, n))
-        for i in xrange(n):
+        for i in range(n):
             func.SetDirection(i, i)
 
             if bounds is None:
@@ -162,12 +162,12 @@ def covariance(function, vmin, up, fast=False, bounds=None):
             x = 0.5 * (x1 + x2)
 
             if x < 0:
-                raise StandardError("x may not be negative")
+                raise ValueError("x may not be negative")
 
             d[i, i] = x
 
-        for i in xrange(n - 1):
-            for j in xrange(i + 1, n):
+        for i in range(n - 1):
+            for j in range(i + 1, n):
                 func.SetDirection(i, j)
 
                 if (bounds is not None and
@@ -186,7 +186,7 @@ def covariance(function, vmin, up, fast=False, bounds=None):
                 x = 0.5 * (x1 + x2)
 
                 if x < 0:
-                    raise StandardError("x may not be negative")
+                    raise ValueError("x may not be negative")
 
                 # check whether x is in possible range
                 a = d[i, i]
@@ -195,18 +195,18 @@ def covariance(function, vmin, up, fast=False, bounds=None):
                 xmin = 1.0 / (1.0 / b + 1.0 / a)
 
                 if x <= xmin:
-                    print "covariance(...):", xmin, "<", x, "<", xmax, "violated"
+                    print("covariance(...):", xmin, "<", x, "<", xmax, "violated")
                     x = xmin * 1.01
                 if x >= xmax:
-                    print "covariance(...):", xmin, "<", x, "<", xmax, "violated"
+                    print("covariance(...):", xmin, "<", x, "<", xmax, "violated")
                     x = xmax * 0.99
 
                 d[i, j] = d[j, i] = x
 
         a = 2.0 / d ** 2
 
-        for i in xrange(n - 1):
-            for j in xrange(i + 1, n):
+        for i in range(n - 1):
+            for j in range(i + 1, n):
                 a[i, j] = a[j, i] = 0.5 * (a[i, j] - a[i, i] - a[j, j])
 
     # Beware: in case of a chi^2 we calculated
@@ -228,10 +228,10 @@ def covariance(function, vmin, up, fast=False, bounds=None):
         cov = cov.reshape(k, k)
 
     # first aid, if 1-sigma contour does not look like hyper-ellipsoid
-    for i in xrange(n):
+    for i in range(n):
         if cov[i, i] < 0:
-            print "covariance(...): error, cov[%i,%i] < 0, returning zero" % (i, i)
-            for j in xrange(n):
+            print("covariance(...): error, cov[%i,%i] < 0, returning zero" % (i, i))
+            for j in range(n):
                 cov[i, j] = 0
 
     return cov
@@ -294,7 +294,7 @@ class Minimizer(object):
 
     def GetNumberOfFittedParameters(self):
         k = 0
-        for i in xrange(len(self.lower_bounds)):
+        for i in range(len(self.lower_bounds)):
             if self.lower_bounds[i] < self.upper_bounds[i]:
                 k += 1
         return k
@@ -308,7 +308,7 @@ class Minimizer(object):
         iStarts = []
         iLower = []
         iUpper = []
-        for ipar in xrange(nExt):
+        for ipar in range(nExt):
             s = starts[ipar]
             l = - \
                 np.inf if self.lower_bounds is None else self.lower_bounds[ipar]
@@ -331,7 +331,7 @@ class Minimizer(object):
             self.neval += 1
             ePars = np.empty(nExt)
             ipar = 0
-            for k in xrange(nExt):
+            for k in range(nExt):
                 if k in fix:
                     ePars[k] = starts[k]
                 else:
@@ -396,7 +396,7 @@ class Minimizer(object):
                     if etype is KeyboardInterrupt:
                         raise SystemExit("KeyboardInterrupt")
                     else:
-                        print "Caught exception %s during method %s: %s, trying next" % (etype, method, e)
+                        print("Caught exception %s during method %s: %s, trying next" % (etype, method, e))
             if iResult is None:
                 raise
         else:
@@ -404,7 +404,7 @@ class Minimizer(object):
 
         result = np.empty(nExt)
         ipar = 0
-        for k in xrange(nExt):
+        for k in range(nExt):
             if k in fix:
                 result[k] = starts[k]
             else:
@@ -469,7 +469,7 @@ class ChiSquareFunction(object):
         mask = yerrs > 0
         nBad = len(mask) - np.sum(mask)
         if nBad > 0:
-            print "Warning: %i zeros found in yerrs, corresponding data points will be ignored" % nBad
+            print("Warning: %i zeros found in yerrs, corresponding data points will be ignored" % nBad)
 
         self.ys = ys[mask].flatten()
         self.yerrs2 = yerrs[mask].flatten() ** 2

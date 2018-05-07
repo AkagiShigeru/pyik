@@ -69,7 +69,7 @@ def rebin(factor, w, edges=None, axis=0):
     shape = np.array(w.shape)
     shape[axis] = n
     w2 = np.zeros(shape, dtype=w.dtype)
-    for i in xrange(factor):
+    for i in range(factor):
         mask = [slice(x) for x in shape]
         mask[axis] = slice(i, nbin, factor)
         w2 += w[mask]
@@ -81,7 +81,7 @@ def rebin(factor, w, edges=None, axis=0):
         return w2
 
 
-def bin(x, y, bins=10, range=None):
+def bin(x, y, bins=10, xRange=None):
     """
     Bin x and returns lists of the y-values inside each bin.
 
@@ -93,8 +93,8 @@ def bin(x, y, bins=10, range=None):
       Variable that is sorted according to the binning of x.
     bins: integer or array-like
       Number of bins or array of lower bin edges + last high bin edge.
-    range: tuple, lenght of 2 (optional)
-      If range is set, only (x,y) pairs are used where x is inside the range.
+    xRange: tuple, lenght of 2 (optional)
+      If xRange is set, only (x,y) pairs are used where x is inside the range.
       Ignored, if bins is an array.
 
     Returns
@@ -104,24 +104,23 @@ def bin(x, y, bins=10, range=None):
     xegdes: array of floats
       Lower bin edges. Has length len(yBins)+1.
     """
-
     ys = np.atleast_1d(y)
     xs = np.atleast_1d(x)
 
     if type(bins) is int:
-        if range is None:
-            range = (min(x), max(x) + np.finfo(float).eps)
+        if xRange is None:
+            xRange = (min(x), max(x) + np.finfo(float).eps)
         else:
-            mask = (range[0] <= xs) & (xs < range[1])
+            mask = (xRange[0] <= xs) & (xs < xRange[1])
             xs = xs[mask]
             ys = ys[mask]
-        xedges = np.linspace(range[0], range[1], bins + 1)
+        xedges = np.linspace(xRange[0], xRange[1], bins + 1)
     else:
         xedges = bins
         bins = len(xedges) - 1
 
     binnedys = []
-    for i in xrange(bins):
+    for i in range(bins):
 
         if i == bins - 1:
             binnedys.append(ys[(xedges[i] <= xs) & (xs <= xedges[i + 1])])
@@ -131,7 +130,7 @@ def bin(x, y, bins=10, range=None):
     return binnedys, xedges
 
 
-def profile(x, y, bins=10, range=None, sigma_cut=None):
+def profile(x, y, bins=10, xRange=None, sigma_cut=None):
     """
     Compute the (robust) profile of a set of data points.
 
@@ -144,7 +143,7 @@ def profile(x, y, bins=10, range=None, sigma_cut=None):
       Defines the number of equal width bins in the given range (10,
       by default). If bins is an array, it is used for the bin edges
       of the profile.
-    range : (float,float), optional
+    xRange : (float,float), optional
       The lower and upper range of the bins. If not provided, range
       is simply ``(a.min(), a.max())``. Values outside the range are
       ignored.
@@ -176,16 +175,16 @@ def profile(x, y, bins=10, range=None, sigma_cut=None):
 
     y = np.asfarray(np.atleast_1d(y))
 
-    n, xedge = np.histogram(x, bins=bins, range=range)
+    n, xedge = np.histogram(x, bins=bins, range=xRange)
 
     if sigma_cut is None:
-        ysum = np.histogram(x, bins=bins, range=range, weights=y)[0]
-        yysum = np.histogram(x, bins=bins, range=range, weights=y * y)[0]
+        ysum = np.histogram(x, bins=bins, range=xRange, weights=y)[0]
+        yysum = np.histogram(x, bins=bins, range=xRange, weights=y * y)[0]
     else:
         if sigma_cut <= 0:
             raise ValueError("sigma_cut <= 0 detected, has to be positive")
         # sort y into bins
-        ybin = bin(x, y, bins, range)[0]
+        ybin = bin(x, y, bins, xRange)[0]
 
         if type(bins) is int:
             nbins = bins
@@ -195,7 +194,7 @@ def profile(x, y, bins=10, range=None, sigma_cut=None):
         # reject outliers in calculation of avg, std
         ysum = np.zeros(nbins)
         yysum = np.zeros(nbins)
-        for i in xrange(nbins):
+        for i in xRange(nbins):
             ymed = np.median(ybin[i])
             ymad = mad(ybin[i])
             for y in ybin[i]:
@@ -215,7 +214,7 @@ def profile(x, y, bins=10, range=None, sigma_cut=None):
     return yavg, ystd, n, xedge
 
 
-def profile2d(x, y, z, bins=(10, 10), range=None):
+def profile2d(x, y, z, bins=(10, 10), xRange=None):
     """
     Compute the profile of a set of data points in 2d.
     """
@@ -223,10 +222,10 @@ def profile2d(x, y, z, bins=(10, 10), range=None):
     if not isinstance(z, np.ndarray):
         z = np.array(z)
 
-    ws, xedges, yedges = np.histogram2d(x, y, bins, range)
+    ws, xedges, yedges = np.histogram2d(x, y, bins, xRange)
 
-    zsums = np.histogram2d(x, y, bins, range, weights=z)[0]
-    zzsums = np.histogram2d(x, y, bins, range, weights=z * z)[0]
+    zsums = np.histogram2d(x, y, bins, xRange, weights=z)[0]
+    zzsums = np.histogram2d(x, y, bins, xRange, weights=z * z)[0]
 
     zavgs = zsums / ws
     zstds = np.sqrt(zzsums / ws - zavgs * zavgs)
@@ -317,7 +316,7 @@ def derivative(f, x, step=None, order=1):
     h0 = h = eps ** 0.33 if order == 1 else eps ** 0.25
 
     userStep = step is not None
-    for i in xrange(10):
+    for i in range(10):
         dx = step if userStep else (h * x if np.all(x) else h)
         tmp = x + dx
         dx = tmp - x
@@ -437,14 +436,14 @@ def jacobian(f, x, steps=None):
 
     e = np.zeros(nx)
 
-    for ix in xrange(nx):
+    for ix in range(nx):
         e *= 0
         e[ix] = 1
 
         der = derivative(lambda z: f(x + z * e), 0,
                          step=None if steps is None else steps[ix])
 
-        for iy in xrange(ny):
+        for iy in range(ny):
             jacobi[iy, ix] = der[iy] if ny > 1 else der
 
     return jacobi
@@ -474,8 +473,8 @@ def hessian(f, x, steps):
     n = len(x)
     hesse = np.empty((n, n))
 
-    for i in xrange(n):
-        for j in xrange(i, n):
+    for i in range(n):
+        for j in range(i, n):
             xpp = xx.copy()
             xpp[i] += steps[i]
             xpp[j] += steps[j]
@@ -542,7 +541,7 @@ def propagate_covariance(f, x, cov):
 
     ncol = len(x)
     dx = np.empty(ncol)
-    for icol in xrange(ncol):
+    for icol in range(ncol):
         dx[icol] = (np.sqrt(cov[icol][icol]) if cov[icol][icol] > 0.0 else 1.0) * 1e-3
 
     jacobi = jacobian(f, x, dx)
@@ -778,7 +777,7 @@ class ConvexHull:
     def removal(self, pos, bound):
         x = np.array([p[0] for p in pos])
         y = np.array([p[1] for p in pos])
-        for b in xrange(len(bound)):
+        for b in range(len(bound)):
             px = np.where(x == bound[b][0])
             py = np.where(y == bound[b][1])
             if px == py:
@@ -856,7 +855,7 @@ def bootstrap(function, x, r=1000):
     n = np.alen(x)
     xx = np.array(x)
     iB = np.array(np.random.permutation(n * r) % n)
-    xbGen = (xx[iB[ir * n:(ir + 1) * n]] for ir in xrange(r))
+    xbGen = (xx[iB[ir * n:(ir + 1) * n]] for ir in (r))
     ybs = map(function, xbGen)
     return np.array(ybs)
 
@@ -1310,7 +1309,7 @@ class FeldmanCousins(object):
         return cxsort[0], cxsort[-1]
 
     def Finitize(self, arr):
-        arr[np.isfinite(arr) == False] = 0.0
+        arr[~np.isfinite(arr)] = 0.0
         return arr
 
     def Boundarize(self, arr):
@@ -1449,7 +1448,7 @@ class multivariate_gaussian_evaluator(object):
     Draw the ellipse
     >>> from matplotlib.patches import Ellipse
     >>> ell2 = Ellipse(xy=(mean[0], mean[1]), width=length[0]*2, height=length[1]*2, angle=np.degrees(np.arctan2(*direct[:,0][::-1])))
-    
+
     You need to manually add the Ellipse to axes 'ax': ax.add_artist(ell2)
 
     Without coverage
@@ -1507,7 +1506,7 @@ class multivariate_gaussian_evaluator(object):
         points = self.points.copy()
         prob = [0] * len(points[0])
         pos = points.T
-        for i in xrange(len(pos)):
+        for i in range(len(pos)):
             prob[i] = multivariate_gaussian(pos[i], self.mean, self.cov)
         return np.array(prob)
 
@@ -1525,7 +1524,7 @@ class multivariate_gaussian_evaluator(object):
         w, u = np.linalg.eig(self.cov.copy())
 
         isin = [1] * len(points)
-        for p in xrange(len(points)):
+        for p in range(len(points)):
             x = np.dot(u.T, points[p] - self.mean.copy()) / np.sqrt(w)
             isin[p] = int(np.sum(x * x) <=
                           chi2(len(self.mean.copy())).ppf(self.coverage))
