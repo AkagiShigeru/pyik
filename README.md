@@ -2,9 +2,26 @@
 
 [![Build Status](https://travis-ci.org/HDembinski/pyik.svg?branch=master)](https://travis-ci.org/HDembinski/pyik)
 
-This package contains a set of tools that extend and simplify common analysis tasks in particle physics. The future aim of this package is nothing less than to provide a working alternative to ROOT.
+This package provides tools to simplify common analysis tasks in particle physics. The main goal is to provide functionality which is currently missing in numpy, scipy, and matplotlib.
 
 The tools are grouped by topic into several modules which are listed below. Most of them depend on external modules which are not shipped with Python. The respective dependencies are also listed.
+
+## Installation
+
+PyIK supports Python2 and Python3. Install it with `pip`.
+```
+pip install pyik
+```
+
+Optional: If you want to use the fitting routines in PyIK, you need libnlopt. Installation instructions are here
+    http://ab-initio.mit.edu/wiki/index.php/NLopt#Download_and_installation
+`pip install nlopt` may also work
+
+## Documentation
+
+PyIK uses the Python self-documentation system. In the Python interpreter, execute "help()", followed by "pyik" or "pyik.numpyext", for example.
+
+Please submit an issue via GitHub if you find issues. Pull requests are also welcome.
 
 ## Content
 
@@ -21,8 +38,7 @@ The tools are grouped by topic into several modules which are listed below. Most
 
 ## Notes
 
-This packages also contains some a directory with working examples
-to copy-paste from.
+The example folder contains working examples to copy-paste from.
 
 ## Authors
 

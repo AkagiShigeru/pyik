@@ -1,34 +1,37 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+import warnings
+import multiprocessing as mp
 
 
-def pmap(function, arguments, numprocesses=None, chunksize=None, async=False):
+def pmap(function, *arguments, **kwargs):
     """
     Parallelized version of map. It calls function on arguments using numprocesses threads.
 
-    Also try the numexpr package, which is easy to use and may give you better performance.
+    Also try the numexpr package or numba, which are easy to use and may give you better
+    performance.
 
     Parameters
     ----------
     function : function
       The function to call.
-    arguments : list
-      The iterable arguments to function.
+    arguments : sequence(s)
+      One or more sequences, which are passed to the function. If N sequences are
+      provided, function is called with N arguments.
     numprocesses : int, optional (default = None)
       The number of processes to keep busy. If None, the number of CPUs is used.
-    chunksize: int, optional (default = None)
-      The number of chunks in which arguments are passed to the processes.
-      By default this is set to the number of processes.
-    async : bool, optional (default = False)
-      If async is true, the results can have arbitrary order. This can improve
-      the speed of execution.
+    nchunks: int, optional (default = None)
+      The number of chunks in which the arguments are split.
+      By default this is set to the number of processes, but sometimes you want
+      fewer chunks, so that they do not become too short.
 
     Returns
     -------
-    results : list
+    results : list or ndarray
       The values returned by the function calls, as would be done by
-      map(function, arguments). If async is True, the order of the results is
-      arbitrary.
+      map(function, *arguments). If async is True, the order of the results is
+      arbitrary. If the first of arguments is an ndarray, the result is converted to an
+      ndarray.
 
     Notes
     -----
@@ -46,7 +49,7 @@ def pmap(function, arguments, numprocesses=None, chunksize=None, async=False):
     Examples
     --------
     >>> def f(x): return x*x
-    >>> pmap(f, (1,2,3))
+    >>> pmap(f, (1, 2, 3))
     [1, 4, 9]
 
     See Also
@@ -54,54 +57,56 @@ def pmap(function, arguments, numprocesses=None, chunksize=None, async=False):
     multiprocessing
     """
 
-    import multiprocessing as mp
-    from itertools import chain
+    assert len(arguments) > 0, "at least one iterable argument is required"
+    assert all(np.iterable(args) for args in arguments), "arguments must be iterable"
+    length = len(arguments[0])
+    assert all(length == len(args) for args in arguments[1:]), "all arguments must have same length"
 
-    if numprocesses is None:
-        numprocesses = mp.cpu_count()
+    numprocesses = kwargs.get("numprocesses", mp.cpu_count())
+    nchunks = kwargs.get("nchunks", numprocesses)
 
-    assert np.iterable(arguments), "Input argument is not iterable!"
+    chunksize = kwargs.get("chunksize", None)
+    if chunksize is not None:
+        warnings.warn("chunksize keyword is deprecated, please use nchunks keyword",
+                      DeprecationWarning)
+        nchunks = chunksize
 
-    if chunksize is None:
-        chunksize = numprocesses
+    if not kwargs.get("async", True):
+        warnings.warn("async == False is deprecated, pmap results are always in "
+                      "correct order now",
+                      DeprecationWarning)
 
-    numprocesses = min(numprocesses, len(arguments), chunksize)
+    nchunks = min(numprocesses, length, nchunks)
+    argchunks = [np.array_split(args, nchunks) for args in arguments]
 
-    nchunks = min(numprocesses, chunksize)
-    argchunks = np.array_split(arguments, nchunks)
+    def worker(f, conn):
+        args = conn.recv()
+        result = list(map(f, *args))
+        conn.send(result)
 
-    q_in = mp.Queue(1)
-    q_out = mp.Queue()
+    pipes = [mp.Pipe() for _ in range(nchunks)]
+    procs = [mp.Process(target=worker, args=(function, p[1])) for p in pipes]
 
-    def worker(f, q_in, q_out):
-        while True:
-            i, x = q_in.get()
-            if i is None:
-                break
-            x = np.atleast_1d(x)
-            res = []
-            for ix in x:
-                res.append(f(ix))
-            q_out.put((i, res))
-
-    proc = [mp.Process(target=worker, args=(function, q_in, q_out))
-            for _ in range(numprocesses)]
-
-    for p in proc:
+    for p in procs:
         p.daemon = True
         p.start()
 
-    sent = [q_in.put((i, x)) for i, x in enumerate(argchunks)]
-    [q_in.put((None, None)) for _ in range(numprocesses)]
-    res = [q_out.get() for _ in range(len(sent))]
+    for i, p in enumerate(pipes):
+        args = [args[i] for args in argchunks]
+        p[0].send(args)
 
-    [p.join() for p in proc]
-    [p.terminate() for p in proc]
+    results = [p[0].recv() for p in pipes]
 
-    if not async:
-        res = sorted(res)
+    for p in procs:
+        p.join()
 
-    return list(chain.from_iterable([x for _, x in res]))
+    first_arg = arguments[0]
+    if isinstance(first_arg, np.ndarray):
+        return np.concatenate([x for x in results], axis=0)
+    res = []
+    for r in results:
+        res += r
+    return res
 
 
 def cached(keepOpen=False, lockCacheFile=False, trackCode=True):
@@ -148,7 +153,7 @@ def cached(keepOpen=False, lockCacheFile=False, trackCode=True):
     Limitations
     -----------
     The function is only are allowed to accept and return objects
-    that can be handled by the cPickle module. Fortunately, that is practically
+    that can be handled by the pickle module. Fortunately, that is practically
     everything.
 
     Examples
@@ -174,7 +179,7 @@ def cached(keepOpen=False, lockCacheFile=False, trackCode=True):
     See also
     --------
     shelve
-    cPickle
+    pickle
     """
 
     import os
@@ -261,7 +266,7 @@ def cached_at(cacheFileName, keepOpen=False, lockCacheFile=False, trackCode=True
     See also
     --------
     shelve
-    cPickle
+    pickle
     """
 
     from functools import wraps
@@ -270,7 +275,7 @@ def cached_at(cacheFileName, keepOpen=False, lockCacheFile=False, trackCode=True
         raise ValueError("keepOpen cannot be used together with lockCacheFile")
 
     if lockCacheFile:
-        import locked_shelve as shelve
+        from . import locked_shelve as shelve
     else:
         import shelve
 
@@ -283,17 +288,24 @@ def cached_at(cacheFileName, keepOpen=False, lockCacheFile=False, trackCode=True
         @wraps(function)
         def decorated_function(*args, **kwargs):
 
-            import cPickle
+            from six.moves import cPickle as pickle
+            import six
             import inspect
-            import md5
+            import hashlib
+
+            def encode(x):
+                if six.PY2:
+                    return x
+                else:
+                    return x.encode("utf-8")
 
             # Pickle the function arguments to use them as key
             # it is preferable not to include the function name in the pickle
             # when the function name changes, the cache file name changes anyway
             # if the user decides to recall the function and manually recall the
             # cache, it will still work
-            key = cPickle.dumps((args, kwargs), protocol=-1)
-            code_hash = md5.md5(inspect.getsource(function)).digest()
+            key = str(pickle.dumps((args, kwargs), protocol=-1))
+            code_hash = hashlib.md5(encode(inspect.getsource(function))).digest()
 
             if keepOpen:
                 d = _d  # Use open shelve
@@ -321,7 +333,7 @@ def cached_at(cacheFileName, keepOpen=False, lockCacheFile=False, trackCode=True
                                     1, writeback=False)
 
                 if key in d:
-                    if cPickle.dumps([d[key]["cache"]], protocol=-1) == cPickle.dumps([output], protocol=-1):
+                    if pickle.dumps([d[key]["cache"]], protocol=-1) == pickle.dumps([output], protocol=-1):
                         dk = d[key]
                         dk["code_hash"] += [code_hash]
                         d[key] = dk
